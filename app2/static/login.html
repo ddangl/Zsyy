@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>打卡数据整理助手 - 登录</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, 'Microsoft YaHei', sans-serif; background: #f0f0f0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+.login-box { background: #fff; border-radius: 12px; padding: 40px; width: 360px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center; }
+.login-box h1 { font-size: 22px; color: #2c3e50; margin-bottom: 8px; }
+.login-box p { font-size: 13px; color: #95a5a6; margin-bottom: 30px; }
+.login-box input { width: 100%; padding: 12px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; outline: none; margin-bottom: 16px; transition: border 0.2s; }
+.login-box input:focus { border-color: #3498db; }
+.login-box button { width: 100%; padding: 12px; background: #3498db; color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+.login-box button:hover { background: #2980b9; }
+.error { color: #e74c3c; font-size: 13px; margin-bottom: 12px; display: none; }
+</style>
+</head>
+<body>
+<div class="login-box">
+    <h1>打卡数据整理助手</h1>
+    <p>请输入密码访问</p>
+    <div class="error" id="errorMsg">密码错误，请重试</div>
+    <input type="password" id="passwordInput" placeholder="输入密码" autofocus onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">登 录</button>
+</div>
+<script>
+async function doLogin() {
+    var password = document.getElementById('passwordInput').value;
+    var errEl = document.getElementById('errorMsg');
+    errEl.style.display = 'none';
+    try {
+        var resp = await fetch('/daka2/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: password })
+        });
+        var data = await resp.json();
+        if (data.ok) {
+            localStorage.setItem('daka2_token', 'daka2_auth_ok');
+            errEl.style.display = 'block';
+            errEl.style.color = '#27ae60';
+            errEl.textContent = '登录成功，正在跳转...';
+            setTimeout(function() { window.location.href = '/daka2/'; }, 300);
+        } else {
+            errEl.style.display = 'block';
+            errEl.style.color = '#e74c3c';
+            errEl.textContent = data.detail || '密码错误';
+        }
+    } catch (e) {
+        errEl.style.display = 'block';
+        errEl.style.color = '#e74c3c';
+        errEl.textContent = '登录失败: ' + e.message;
+    }
+}
+</script>
+</body>
+</html>

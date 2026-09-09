@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>打卡数据整理助手</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, 'Microsoft YaHei', sans-serif; background: #f0f0f0; color: #2c3e50; }
+.container { max-width: 900px; margin: 20px auto; padding: 20px; }
+h1 { text-align: center; font-size: 24px; margin-bottom: 20px; color: #2c3e50; }
+.panel { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.panel-title { font-size: 14px; font-weight: bold; color: #34495e; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+.file-info { color: #7f8c8d; font-size: 13px; margin-top: 8px; }
+.file-info.success { color: #27ae60; }
+
+.btn { display: inline-block; padding: 10px 24px; border: none; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; transition: all 0.2s; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-blue { background: #3498db; color: #fff; }
+.btn-blue:hover:not(:disabled) { background: #2980b9; }
+.btn-green { background: #27ae60; color: #fff; }
+.btn-green:hover:not(:disabled) { background: #229954; }
+.btn-orange { background: #E67E22; color: #fff; }
+.btn-orange:hover:not(:disabled) { background: #D35400; }
+.btn-red { background: #e74c3c; color: #fff; }
+.btn-red:hover:not(:disabled) { background: #c0392b; }
+.btn-gray { background: #bdc3c7; color: #fff; }
+.btn-small { padding: 6px 14px; font-size: 12px; }
+
+.btn-group { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+
+.options { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.options label { font-size: 13px; color: #2c3e50; cursor: pointer; }
+.options input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+
+.log-box { background: #2c3e50; color: #ecf0f1; border-radius: 6px; padding: 12px; height: 300px; overflow-y: auto; font-family: 'Consolas', monospace; font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
+.log-box .error { color: #e74c3c; }
+.log-box .success { color: #27ae60; }
+.log-box .warning { color: #f39c12; }
+
+.image-preview { text-align: center; margin-top: 15px; }
+.image-preview img { max-width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+
+.copyright { text-align: right; font-size: 11px; color: #95a5a6; margin-top: 10px; }
+
+/* 修改表格弹窗 */
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+.modal-overlay.active { display: flex; }
+.modal { background: #fff; border-radius: 10px; width: 90%; max-width: 950px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 8px 30px rgba(0,0,0,0.2); }
+.modal-header { padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+.modal-header h2 { font-size: 18px; }
+.modal-body { padding: 15px 20px; overflow-y: auto; flex: 1; }
+.modal-footer { padding: 12px 20px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: center; }
+
+.search-bar { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
+.search-bar input { padding: 6px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; width: 200px; }
+
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table th { background: #3498db; color: #fff; padding: 8px 10px; text-align: center; font-weight: bold; position: sticky; top: 0; }
+.data-table td { border: 1px solid #e9e9e9; padding: 6px 8px; text-align: center; }
+.data-table tr:nth-child(even) { background: #f8f9fa; }
+.data-table td.editable { cursor: pointer; }
+.data-table td.editable:hover { background: #e8f4fd; }
+.data-table td input { width: 100%; border: 1px solid #3498db; padding: 4px; text-align: center; font-size: 13px; outline: none; }
+
+.hint { font-size: 12px; color: #7f8c8d; margin-bottom: 8px; }
+
+.spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>打卡数据整理助手</h1>
+
+    <!-- 文件选择 -->
+    <div class="panel">
+        <div class="panel-title">文件选择</div>
+        <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none" onchange="onFileSelected(this)">
+        <button class="btn btn-blue" onclick="document.getElementById('fileInput').click()">选择Excel文件</button>
+        <div id="fileInfo" class="file-info">请选择要处理的打卡Excel文件</div>
+    </div>
+
+    <!-- 处理选项 -->
+    <div class="panel">
+        <div class="panel-title">处理选项</div>
+        <div class="options">
+            <input type="checkbox" id="hideMissing">
+            <label for="hideMissing">隐藏未打卡房间 (加班日建议勾选)</label>
+        </div>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div class="panel">
+        <div class="btn-group">
+            <button class="btn btn-green" id="btnProcess" disabled onclick="processFile()">开始处理</button>
+            <button class="btn btn-orange" id="btnPatch" disabled onclick="openPatchDialog()">修改表格</button>
+        </div>
+    </div>
+
+    <!-- 日志 -->
+    <div class="panel">
+        <div class="panel-title">处理日志</div>
+        <div class="log-box" id="logBox"></div>
+    </div>
+
+    <!-- 图片预览 -->
+    <div id="imagePanel" class="panel" style="display:none">
+        <div class="panel-title">处理结果</div>
+        <div class="image-preview">
+            <img id="resultImage" src="" alt="处理结果">
+        </div>
+        <div style="text-align:center; margin-top:10px;">
+            <a id="downloadLink" href="" download class="btn btn-blue btn-small">下载图片</a>
+        </div>
+    </div>
+
+    <div class="copyright">V1.0</div>
+</div>
+
+<!-- 修改表格弹窗 -->
+<div class="modal-overlay" id="patchModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>修改表格</h2>
+            <button class="btn btn-red btn-small" onclick="closePatchDialog()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="search-bar">
+                <span>搜索:</span>
+                <input type="text" id="searchInput" placeholder="姓名/工号" oninput="filterTable()">
+            </div>
+            <div class="hint">双击单元格可直接编辑；时间格式 2026-08-20 16:00 或 16:00</div>
+            <table class="data-table" id="dataTable">
+                <thead id="tableHead"></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-blue btn-small" onclick="addRow()">新增一行</button>
+            <button class="btn btn-green btn-small" onclick="saveChanges()">保存修改</button>
+            <button class="btn btn-red btn-small" onclick="closePatchDialog()">取消</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentFileId = null;
+let currentFilename = null;
+let overviewData = null;
+let modifiedCells = {};
+let addedRows = [];
+const BASE = '/daka2';
+const TOKEN_KEY = 'daka2_token';
+
+// 获取 auth header
+function authHeaders() {
+    var token = localStorage.getItem(TOKEN_KEY);
+    return token ? { 'Authorization': 'Bearer ' + token } : {};
+}
+
+// 检查登录状态
+(function checkLogin() {
+    var token = localStorage.getItem(TOKEN_KEY);
+    if (!token) {
+        window.location.href = BASE + '/login.html';
+    }
+})();
+
+// API 401 统一跳登录
+function handleResp(resp) {
+    if (resp.status === 401) {
+        localStorage.removeItem(TOKEN_KEY);
+        window.location.href = BASE + '/login.html';
+        throw new Error('未登录');
+    }
+    return resp.json();
+}
+
+function log(text, type = '') {
+    const box = document.getElementById('logBox');
+    const span = document.createElement('span');
+    if (type) span.className = type;
+    span.textContent = text + '\n';
+    box.appendChild(span);
+    box.scrollTop = box.scrollHeight;
+}
+
+function clearLog() {
+    document.getElementById('logBox').innerHTML = '';
+}
+
+async function onFileSelected(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    clearLog();
+    document.getElementById('imagePanel').style.display = 'none';
+    log('正在上传文件...');
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const resp = await fetch(BASE + '/api/upload', { method: 'POST', body: formData });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || '上传失败');
+
+        currentFileId = data.file_id;
+        currentFilename = data.filename;
+
+        document.getElementById('fileInfo').textContent = '已选择文件: ' + data.filename;
+        document.getElementById('fileInfo').className = 'file-info success';
+        document.getElementById('btnProcess').disabled = false;
+        document.getElementById('btnPatch').disabled = false;
+        log('上传成功: ' + data.filename, 'success');
+    } catch (e) {
+        log('上传失败: ' + e.message, 'error');
+    }
+
+    input.value = '';
+}
+
+async function processFile() {
+    if (!currentFileId) return;
+
+    clearLog();
+    document.getElementById('imagePanel').style.display = 'none';
+    const btn = document.getElementById('btnProcess');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>处理中...';
+
+    const showMissing = !document.getElementById('hideMissing').checked;
+
+    try {
+        const resp = await fetch(BASE + `/api/process?file_id=${currentFileId}&show_missing=${showMissing}`, { method: 'POST', headers: authHeaders() });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || '处理失败');
+
+        log(data.logs || '');
+        if (data.error) {
+            log('处理出错: ' + data.error, 'error');
+        } else {
+            log('全部处理结束', 'success');
+        }
+
+        if (data.image_url) {
+            var token = localStorage.getItem(TOKEN_KEY) || '';
+            document.getElementById('resultImage').src = data.image_url + '?token=' + token + '&t=' + Date.now();
+            document.getElementById('downloadLink').href = data.image_url + '?token=' + token;
+            document.getElementById('imagePanel').style.display = 'block';
+        }
+    } catch (e) {
+        log('处理失败: ' + e.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '开始处理';
+    }
+}
+
+async function openPatchDialog() {
+    if (!currentFileId) return;
+
+    try {
+        const resp = await fetch(BASE + `/api/overview/${currentFileId}`, { headers: authHeaders() });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || '读取失败');
+
+        overviewData = data;
+        modifiedCells = {};
+        addedRows = [];
+
+        // 渲染表头
+        const thead = document.getElementById('tableHead');
+        thead.innerHTML = '<tr>' + data.headers.map(h => `<th>${h.label}</th>`).join('') + '</tr>';
+
+        // 渲染数据
+        renderTableBody(data.rows);
+
+        document.getElementById('patchModal').classList.add('active');
+    } catch (e) {
+        alert('读取失败: ' + e.message);
+    }
+}
+
+function renderTableBody(rows) {
+    const tbody = document.getElementById('tableBody');
+    const cols = overviewData.columns;
+    tbody.innerHTML = '';
+
+    rows.forEach((row, idx) => {
+        const tr = document.createElement('tr');
+        tr.dataset.idx = row._idx;
+        tr.dataset.isNew = row._isNew ? '1' : '0';
+
+        cols.forEach(col => {
+            const td = document.createElement('td');
+            td.className = 'editable';
+            td.textContent = row[col] || '';
+            td.dataset.col = col;
+            td.dataset.rowIdx = row._idx;
+            td.ondblclick = () => startEdit(td);
+            tr.appendChild(td);
+        });
+
+        tbody.appendChild(tr);
+    });
+}
+
+function startEdit(td) {
+    if (td.querySelector('input')) return;
+
+    const input = document.createElement('input');
+    input.value = td.textContent;
+    td.textContent = '';
+    td.appendChild(input);
+    input.focus();
+    input.select();
+
+    const finish = () => {
+        const newVal = input.value;
+        td.textContent = newVal;
+
+        const rowIdx = td.dataset.rowIdx;
+        const col = td.dataset.col;
+        const isNew = td.closest('tr').dataset.isNew === '1';
+
+        if (isNew) {
+            const added = addedRows.find(r => r._idx === rowIdx);
+            if (added) added[col] = newVal;
+        } else {
+            // 找到原始值
+            const origRow = overviewData.rows.find(r => String(r._idx) === String(rowIdx));
+            const origVal = origRow ? (origRow[col] || '') : '';
+            if (newVal !== origVal) {
+                if (!modifiedCells[rowIdx]) modifiedCells[rowIdx] = {};
+                modifiedCells[rowIdx][col] = newVal;
+            } else {
+                // 恢复原值，移除修改
+                if (modifiedCells[rowIdx]) {
+                    delete modifiedCells[rowIdx][col];
+                    if (Object.keys(modifiedCells[rowIdx]).length === 0) delete modifiedCells[rowIdx];
+                }
+            }
+        }
+    };
+
+    input.onblur = finish;
+    input.onkeydown = (e) => {
+        if (e.key === 'Enter') finish();
+        if (e.key === 'Escape') { input.value = td.dataset.origVal || input.value; finish(); }
+    };
+}
+
+function addRow() {
+    const cols = overviewData.columns;
+    const newRow = { _idx: 'new_' + Date.now(), _isNew: true };
+    cols.forEach(c => newRow[c] = '');
+    addedRows.push(newRow);
+
+    const tbody = document.getElementById('tableBody');
+    const tr = document.createElement('tr');
+    tr.dataset.idx = newRow._idx;
+    tr.dataset.isNew = '1';
+
+    cols.forEach(col => {
+        const td = document.createElement('td');
+        td.className = 'editable';
+        td.textContent = '';
+        td.dataset.col = col;
+        td.dataset.rowIdx = newRow._idx;
+        td.ondblclick = () => startEdit(td);
+        tr.appendChild(td);
+    });
+
+    tbody.insertBefore(tr, tbody.firstChild);
+    tr.scrollIntoView();
+}
+
+function filterTable() {
+    const keyword = document.getElementById('searchInput').value.trim().toLowerCase();
+    const rows = document.getElementById('tableBody').querySelectorAll('tr');
+    rows.forEach(tr => {
+        if (!keyword) { tr.style.display = ''; return; }
+        const text = tr.textContent.toLowerCase();
+        tr.style.display = text.includes(keyword) ? '' : 'none';
+    });
+}
+
+async function saveChanges() {
+    if (!currentFileId) return;
+
+    const hasChanges = Object.keys(modifiedCells).length > 0;
+    const hasNewRows = addedRows.length > 0;
+
+    if (!hasChanges && !hasNewRows) {
+        alert('没有检测到修改');
+        return;
+    }
+
+    try {
+        const resp = await fetch(BASE + `/api/save/${currentFileId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
+            body: JSON.stringify({ changes: modifiedCells, new_rows: addedRows })
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || '保存失败');
+
+        alert(data.message);
+        closePatchDialog();
+    } catch (e) {
+        alert('保存失败: ' + e.message);
+    }
+}
+
+function closePatchDialog() {
+    document.getElementById('patchModal').classList.remove('active');
+}
+</script>
+</body>
+</html>

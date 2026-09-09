@@ -1,0 +1,44 @@
+# ===== 隐私数据（绝不提交）=====
+# 打卡记录与统计图（含真实姓名/工号）
+数据/
+*.xlsx
+*.png
+
+# 密钥/环境配置
+.env
+app2/.env
+
+# ===== 字体（微软雅黑有版权且体积大，需自备，见 README）=====
+fonts/
+
+# ===== 打包产物与归档 =====
+*.zip
+_归档/
+daka2-web.zip
+
+# ===== 打卡小程序（独立项目，不同步）=====
+打卡小程序/
+打卡小程序设计文档.md
+打卡小程序实施方案.md
+
+# ===== 本地桌面版工具（仅本地使用，不同步）=====
+ui.py
+md_to_png.py
+rth_tkinter.py
+mario_real.ico
+打卡数据整理助手.spec
+操作说明.md
+
+# ===== Python / IDE / 系统 =====
+__pycache__/
+*.pyc
+.venv/
+.zcode/
+.DS_Store
+
+# ===== 运行时目录 =====
+uploads/
+outputs/
+test_output/
+data/
+output/

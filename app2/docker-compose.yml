@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  web2:
+    build:
+      context: ..
+      dockerfile: app2/Dockerfile
+    container_name: daka-web2
+    ports:
+      - "45786:45786"
+    environment:
+      - SITE_PASSWORD=${SITE_PASSWORD:-}
+    volumes:
+      - ./data:/app/uploads
+      - ./output:/app/outputs
+    restart: unless-stopped

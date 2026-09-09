@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "45785:45785"
+    environment:
+      - SITE_PASSWORD=${SITE_PASSWORD:-}
+    volumes:
+      - ./data:/app/app/uploads
+      - ./output:/app/app/outputs
+    restart: unless-stopped
